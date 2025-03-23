@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Webhook Monitor (Dark Mode + JSON Format)</title>
+  <style>
+    body {
+      font-family: monospace;
+      margin: 2rem;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    li {
+      margin: 0.5rem 0;
+      padding: 1rem;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      word-break: break-word;
+      white-space: pre-wrap;
+      font-size: 14px;
+    }
+
+    /* Syntax highlighting */
+    .key { color: #ffcb6b; }
+    .string { color: #c3e88d; }
+    .number { color: #f78c6c; }
+    .boolean { color: #82aaff; }
+    .null { color: #f07178; }
+
+    /* Light mode */
+    @media (prefers-color-scheme: light) {
+      body {
+        background-color: #ffffff;
+        color: #000000;
+      }
+
+      li {
+        background: #f0f0f0;
+      }
+    }
+
+    /* Dark mode */
+    @media (prefers-color-scheme: dark) {
+      body {
+        background-color: #121212;
+        color: #ffffff;
+      }
+
+      li {
+        background: #1e1e1e;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h2>📡 Webhook Logs (Real-time)</h2>
+  <ul id="log"></ul>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const logEl = document.getElementById('log');
+
+    socket.on('init', logs => {
+      logs.forEach(addLog);
+    });
+
+    socket.on('webhook', data => {
+      addLog(data);
+    });
+
+    function syntaxHighlight(json) {
+      if (typeof json !== 'string') {
+        json = JSON.stringify(json, null, 2);
+      }
+      json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return json.replace(/("(\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*"(?:\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d+)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+        let cls = 'number';
+        if (/^"/.test(match)) {
+          cls = /:$/.test(match) ? 'key' : 'string';
+        } else if (/true|false/.test(match)) {
+          cls = 'boolean';
+        } else if (/null/.test(match)) {
+          cls = 'null';
+        }
+        return `<span class="${cls}">${match}</span>`;
+      });
+    }
+
+    function addLog(data) {
+      const li = document.createElement('li');
+      const payload = data.method === 'GET' ? data.query : data.body;
+      li.innerHTML = `[${data.timestamp}] <strong>${data.method}</strong>\n` + syntaxHighlight(payload);
+      logEl.prepend(li);
+    }
+  </script>
+</body>
+</html>
